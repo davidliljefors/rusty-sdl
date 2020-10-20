@@ -5,5 +5,7 @@ authors = ["david"]
 edition = "2018"
 build = "build.rs"
 
-[dependencies]
-sdl2="0.34.3"
+[dependencies.sdl2]
+version = "0.34.3"
+default-features = false
+features = ["image"]

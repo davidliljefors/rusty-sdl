@@ -1,170 +1,57 @@
-use sdl2::event::Event;
+use sdl2::image::{self, InitFlag, LoadTexture};
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
+use sdl2::rect::{Point, Rect};
+use sdl2::{event::Event, render::Canvas, render::Texture, video::Window};
 
-use sdl2::rect::Rect;
 use std::time::Duration;
 
-const BOARD_WIDTH: u32 = 3;
-const BOARD_SIZE: usize = (BOARD_WIDTH * BOARD_WIDTH) as usize;
-const TILE_SIZE: u32 = 128;
-const BOARD_OFFSET: u32 = 0;
-#[derive(Clone, Copy, PartialEq)]
-enum TileType {
-    Empty = 0,
-    Cross = 0x1,
-    Circle = 0x2,
+struct Player {
+    position: Point,
+    sprite: Rect,
 }
 
-impl TileType  {
-    fn next_player(&mut self) {
-        match self {
-            TileType::Cross => { *self = TileType::Circle }
-            TileType::Circle => { *self = TileType::Cross }
-            _ => { *self =TileType::Empty }
-        }
-    } 
-}
-
-#[derive(Clone, Copy)]
-pub struct Tile {
-    rect: Rect,
-    tile_type: TileType,
-}
-
-#[allow(unused)]
-fn add(x: i32, y: i32) -> i32 {
-    x + y
-}
-
-fn window_pos_to_index(x: i32, y: i32) -> Option<usize> {
-    let mut idx: i32 = x - BOARD_OFFSET as i32;
-    let mut idy: i32 = y - BOARD_OFFSET as i32;
-    idx /= TILE_SIZE as i32;
-    idy /= TILE_SIZE as i32;
-
-    let result = idx + idy * BOARD_WIDTH as i32;
-
-    println!("We returend {}", result);
-
-    if result < BOARD_SIZE as i32 && result >= 0 {
-        Some(result as usize)
-    } else {
-        None
-    }
-}
-
-fn check_for_win(board: &[Tile]) -> TileType {
-    // Check lines
-    for i in (0..9).step_by(3) {
-        if board[i].tile_type == board[i + 1].tile_type
-            && board[i + 1].tile_type == board[i + 2].tile_type
-        {
-            return board[i].tile_type;
-        }
-    }
-
-    // Check rows
-    for i in 0..3 {
-        if board[i].tile_type == board[i + 3].tile_type
-            && board[i + 3].tile_type == board[i + 6].tile_type
-        {
-            return board[i].tile_type;
-        }
-    }
-
-    // Check diagonals
-    if board[0].tile_type == board[4].tile_type && board[4].tile_type == board[8].tile_type {
-        return board[0].tile_type;
-    }
-
-    if board[2].tile_type == board[4].tile_type && board[4].tile_type == board[6].tile_type {
-        return board[2].tile_type;
-    }
-
-    TileType::Empty
-}
-
-fn is_board_full(board: &[Tile]) -> bool {
-    for tile in board {
-        if tile.tile_type == TileType::Empty {
-            return false;
-        }
-    }
-    true
-}
-
-fn init_board(board: &mut [Tile]) {
-    let mut x: u32 = BOARD_OFFSET;
-    let mut y: u32 = BOARD_OFFSET;
-    for tile in board.iter_mut() {
-        tile.rect.set_x(x as i32);
-        tile.rect.set_y(y as i32);
-        x += TILE_SIZE;
-        if x / TILE_SIZE >= 3 {
-            x = BOARD_OFFSET;
-            y += TILE_SIZE;
-        }
-    }
+fn render(
+    canvas: &mut Canvas<Window>,
+    texture: &Texture,
+    src: Rect,
+    dst: Rect,
+) -> Result<(), String> {
+    canvas
+        .copy(texture, src, dst)
+        .expect("faild to draw texture");
+    canvas.present();
+    Ok(())
 }
 
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
-    
-
-    const WINDOW_SIZE: u32 = 2 * BOARD_OFFSET + 3 * TILE_SIZE;
+    let _image_context =
+        image::init(InitFlag::PNG | InitFlag::JPG).expect("could not make image context");
 
     let window = video_subsystem
-        .window("rust-sdl2 demo", WINDOW_SIZE, WINDOW_SIZE)
+        .window("rust-sdl2 demo", 1600, 900)
         .position_centered()
         .build()
-        .unwrap();
+        .expect("could not make window");
 
-    let mut canvas = window.into_canvas().build().unwrap();
-
+    let mut canvas = window.into_canvas().build().expect("could not make canvas");
     let texture_creator = canvas.texture_creator();
-    
-    texture_creator.create_texture(None, )
+    let texture = texture_creator
+        .load_texture("assets/character_sheet.png")
+        .expect("could not load texture");
+
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
 
-    let temp_rect = sdl2::rect::Rect::new(0, 0, TILE_SIZE, TILE_SIZE);
-    let default_rect = Tile {
-        rect: temp_rect,
-        tile_type: TileType::Empty,
-    };
-
-    let mut board_pieces: [Tile; BOARD_SIZE] = [default_rect; BOARD_SIZE];
-    init_board(&mut board_pieces);
-
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut current_player: TileType = TileType::Cross;
-
+    let mut clicked_position = Point::new(0,0);
+    
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
         canvas.clear();
-
-        for tile in &board_pieces {
-            
-            match tile.tile_type 
-            {
-                TileType::Cross => {
-                    
-                    canvas.set_draw_color(Color::RGB(0, 255, 0));
-                    canvas.fill_rect(tile.rect).unwrap();
-                }
-                TileType::Circle => {
-                    canvas.set_draw_color(Color::RGB(255, 0, 0));
-                    canvas.fill_rect(tile.rect).unwrap();
-                }
-                _ => {
-                    canvas.set_draw_color(Color::RGB(255, 255, 255));
-                    canvas.draw_rect(tile.rect).unwrap(); 
-                }
-            }
-        }
 
         for event in event_pump.poll_iter() {
             match event {
@@ -176,42 +63,17 @@ pub fn main() {
 
                 Event::MouseButtonDown {
                     x, y, mouse_btn, ..
-                } => {
-                    if mouse_btn == sdl2::mouse::MouseButton::Left {
-                        println!("x = {}, y = {}", x, y);
-                        let index_or = window_pos_to_index(x, y);
-
-                        if let Some(index) = index_or {
-                            if board_pieces[index].tile_type == TileType::Empty {
-                                board_pieces[index].tile_type = current_player;
-
-                                let winner = check_for_win(&board_pieces);
-
-                                match winner {
-                                    TileType::Cross => {
-                                        println!("Green win!");
-                                        std::process::exit(0);
-                                    }
-                                    TileType::Circle => {
-                                        println!("Red win!");
-                                        std::process::exit(0);
-                                    }
-                                    _ => {}
-                                }
-
-                                if is_board_full(&board_pieces) {
-                                    println!("Its a tie.");
-                                    std::process::exit(0);
-                                }
-
-                                current_player.next_player();
-                            }
-                        }
-                    }
-                }
+                } => if mouse_btn == sdl2::mouse::MouseButton::Left {
+                    clicked_position = Point::new(x, y);
+                },
                 _ => {}
             }
         }
+
+        let src = Rect::new(0, 0, 16, 18);
+        let dst = Rect::new(clicked_position.x, clicked_position.y, 64, 64);
+
+        render(&mut canvas, &texture, src, dst).expect("could not render");
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
