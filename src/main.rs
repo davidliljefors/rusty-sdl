@@ -11,9 +11,19 @@ const TILE_SIZE: u32 = 128;
 const BOARD_OFFSET: u32 = 0;
 #[derive(Clone, Copy, PartialEq)]
 enum TileType {
-    Empty,
-    Cross,
-    Circle,
+    Empty = 0,
+    Cross = 0x1,
+    Circle = 0x2,
+}
+
+impl TileType  {
+    fn next_player(&mut self) {
+        match self {
+            TileType::Cross => { *self = TileType::Circle }
+            TileType::Circle => { *self = TileType::Cross }
+            _ => { *self =TileType::Empty }
+        }
+    } 
 }
 
 #[derive(Clone, Copy)]
@@ -22,6 +32,7 @@ pub struct Tile {
     tile_type: TileType,
 }
 
+#[allow(unused)]
 fn add(x: i32, y: i32) -> i32 {
     x + y
 }
@@ -100,6 +111,7 @@ fn init_board(board: &mut [Tile]) {
 pub fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+    
 
     const WINDOW_SIZE: u32 = 2 * BOARD_OFFSET + 3 * TILE_SIZE;
 
@@ -111,6 +123,9 @@ pub fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
 
+    let texture_creator = canvas.texture_creator();
+    
+    texture_creator.create_texture(None, )
     canvas.set_draw_color(Color::RGB(0, 255, 255));
     canvas.clear();
     canvas.present();
@@ -132,15 +147,22 @@ pub fn main() {
         canvas.clear();
 
         for tile in &board_pieces {
-            canvas.set_draw_color(Color::RGB(255, 255, 255));
-            if tile.tile_type == TileType::Empty {
-                canvas.draw_rect(tile.rect).unwrap();
-            } else if tile.tile_type == TileType::Cross {
-                canvas.set_draw_color(Color::RGB(0, 255, 0));
-                canvas.fill_rect(tile.rect).unwrap();
-            } else if tile.tile_type == TileType::Circle {
-                canvas.set_draw_color(Color::RGB(255, 0, 0));
-                canvas.fill_rect(tile.rect).unwrap();
+            
+            match tile.tile_type 
+            {
+                TileType::Cross => {
+                    
+                    canvas.set_draw_color(Color::RGB(0, 255, 0));
+                    canvas.fill_rect(tile.rect).unwrap();
+                }
+                TileType::Circle => {
+                    canvas.set_draw_color(Color::RGB(255, 0, 0));
+                    canvas.fill_rect(tile.rect).unwrap();
+                }
+                _ => {
+                    canvas.set_draw_color(Color::RGB(255, 255, 255));
+                    canvas.draw_rect(tile.rect).unwrap(); 
+                }
             }
         }
 
@@ -165,14 +187,16 @@ pub fn main() {
 
                                 let winner = check_for_win(&board_pieces);
 
-                                if winner == TileType::Cross {
-                                    println!("Green win!");
-                                    std::process::exit(0);
-                                }
-
-                                if winner == TileType::Circle {
-                                    println!("Red win!");
-                                    std::process::exit(0);
+                                match winner {
+                                    TileType::Cross => {
+                                        println!("Green win!");
+                                        std::process::exit(0);
+                                    }
+                                    TileType::Circle => {
+                                        println!("Red win!");
+                                        std::process::exit(0);
+                                    }
+                                    _ => {}
                                 }
 
                                 if is_board_full(&board_pieces) {
@@ -180,11 +204,7 @@ pub fn main() {
                                     std::process::exit(0);
                                 }
 
-                                if current_player == TileType::Circle {
-                                    current_player = TileType::Cross
-                                } else {
-                                    current_player = TileType::Circle;
-                                }
+                                current_player.next_player();
                             }
                         }
                     }
