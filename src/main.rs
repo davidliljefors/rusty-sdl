@@ -4,8 +4,9 @@ use sdl2::mouse::MouseButton;
 use sdl2::pixels::Color;
 use sdl2::rect::{Point, Rect};
 use sdl2::{event::Event, render::Canvas, render::Texture, video::Window};
-
 use std::time::Duration;
+
+mod input;
 
 const TILE_SIZE: u32 = 64;
 
@@ -14,50 +15,7 @@ struct Player {
     position: Point,
     sprite: Rect,
 }
-#[allow(dead_code)]
-#[derive(Clone, Copy)]
-struct ButtonState {
-    pressed: bool,
-    released: bool,
-    held: bool,
-}
-#[derive(Clone, Copy)]
-struct MouseState {
-    held:bool
-}
 
-#[allow(dead_code)]
-struct Input {
-    key_state: [ButtonState; Scancode::Num as usize],
-    mouse_state: [MouseState; 8],
-    mouse_pos: (i32, i32),
-}
-
-#[allow(dead_code)]
-impl Input {
-    fn get_key(&self, code: Scancode) -> ButtonState {
-        self.key_state[code as usize]
-    }
-    fn get_mouse_pos() {}
-
-    fn get_mouse_button(&self, btn: MouseButton) -> MouseState {
-        self.mouse_state[btn as usize]
-    }
-
-    fn new() -> Input {
-        let button = ButtonState {
-            pressed: false,
-            released: false,
-            held: false,
-        };
-        let mouse = MouseState {held:false};
-        Input {
-            key_state: [button; Scancode::Num as usize],
-            mouse_state: [mouse; 8],
-            mouse_pos: (0, 0),
-        }
-    }
-}
 
 fn render(canvas: &mut Canvas<Window>, texture: &Texture, player: &Player) -> Result<(), String> {
     canvas
@@ -106,7 +64,7 @@ pub fn main() {
         sprite: Rect::new(0, 0, 16, 18),
     };
 
-    let mut input = Input::new();
+    let mut input = input::Input::new();
 
     'running: loop {
         canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -161,8 +119,12 @@ pub fn main() {
             println!("Mouse is held at pos x={} y={}", input.mouse_pos.0, input.mouse_pos.1);
         }
 
+        let mouse_pos = input.mouse_pos;
+        player.position.x = mouse_pos.0;
+        player.position.y = mouse_pos.1;
+
         render(&mut canvas, &texture, &player).expect("could not render");
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 300));
     }
 }
