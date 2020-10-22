@@ -1,6 +1,5 @@
 use specs::{Component, VecStorage};
 
-
 #[derive(Debug)]
 pub struct Position {
     pub x:f32,
@@ -39,5 +38,14 @@ pub struct Name {
 }
 
 impl Component for Name {
+    type Storage = VecStorage<Self>;
+}
+
+
+pub struct Sprite {
+    pub texture_id:usize,
+}
+
+impl Component for Sprite {
     type Storage = VecStorage<Self>;
 }

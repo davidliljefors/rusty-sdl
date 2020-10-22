@@ -1,7 +1,10 @@
 use sdl2::image::{self, InitFlag, LoadTexture};
 use sdl2::pixels::Color;
+#[allow(unused_imports)]
 use sdl2::rect::{Point, Rect};
+#[allow(unused_imports)]
 use sdl2::{event::Event, render::Canvas, render::Texture, video::Window};
+#[allow(unused_imports)]
 use specs::{
     Builder, DispatcherBuilder, Read, ReadStorage, RunNow, System, World, WorldExt, WriteStorage,
 };
@@ -10,6 +13,35 @@ use crate::ecs::components::*;
 use crate::ecs::resources::*;
 use crate::ecs::systems::*;
 use crate::input;
+
+pub struct TextureManager<'r> {
+    creator:sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+
+    textures:Vec<Texture<'r>>
+}
+
+impl <'r>TextureManager<'r> {
+    fn new(creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>) -> Self {
+
+        Self { creator, textures:vec![] }
+    }
+    fn add_texture(&mut self, texture:Texture<'r>) -> usize {
+        let index = self.textures.len();
+        self.textures.push(texture);
+        index
+    }
+
+    fn make_texture(&mut self, path:&str) {
+        let tex = self.creator.load_texture(path).expect("Invalid Texture Filepath");
+        
+    }
+
+    fn borrow_texture(&self, index:usize) -> &Texture<'r> {
+        &self.textures[index]
+    }
+}
+
+
 
 pub struct Engine;
 
@@ -31,11 +63,9 @@ impl Engine {
             .expect("could not make window");
 
         let mut canvas = window.into_canvas().build().expect("could not make canvas");
-        let texture_creator = canvas.texture_creator();
 
-        let texture = texture_creator
-            .load_texture("assets/character_sheet.png")
-            .expect("could not load texture");
+        let texture_creator =  TextureManager::new(canvas.texture_creator());
+        //texture_creator.add_texture(texture: Texture<'r>)
 
         canvas.set_draw_color(Color::RGB(0, 255, 255));
         canvas.clear();
@@ -68,8 +98,7 @@ impl Engine {
             .create_entity()
             .with(Position { x: 0.0, y: 0.0 })
             .with(Velocity { x: 0.0, y: 0.0 })
-            .with(Name {
-                name: String::from("Player"),
+            .with(Name { name: String::from("Player"),
             })
             .build();
 
