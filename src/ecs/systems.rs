@@ -1,9 +1,19 @@
-use specs::{Read, ReadStorage, System, WriteStorage, Join};
+use specs::{Read, ReadStorage, System, WriteStorage, WriteExpect,  Join};
 use sdl2::keyboard::Scancode;
 
 use crate::ecs::components::*;
 use crate::ecs::resources::*;
 
+pub struct SpriteRenderSystem;
+
+impl<'a> System<'a> for SpriteRenderSystem {
+    type SystemData = (
+        WriteExpect<'a, Renderer>,
+        ReadStorage<'a, Sprite>,
+        ReadStorage<'a, Position>,
+    );
+    
+}
 pub struct PositionPrinterSystem;
 
 impl<'a> System<'a> for PositionPrinterSystem {

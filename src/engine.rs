@@ -8,40 +8,36 @@ use sdl2::{event::Event, render::Canvas, render::Texture, video::Window};
 use specs::{
     Builder, DispatcherBuilder, Read, ReadStorage, RunNow, System, World, WorldExt, WriteStorage,
 };
+use std::vec::Vec;
 
 use crate::ecs::components::*;
 use crate::ecs::resources::*;
 use crate::ecs::systems::*;
 use crate::input;
 
-pub struct TextureManager<'r> {
-    creator:sdl2::render::TextureCreator<sdl2::video::WindowContext>,
-
-    textures:Vec<Texture<'r>>
+pub struct TextureLibrary {
+    texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>,
+    loaded_textures: Vec<Texture>,
 }
 
-impl <'r>TextureManager<'r> {
-    fn new(creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>) -> Self {
-
-        Self { creator, textures:vec![] }
-    }
-    fn add_texture(&mut self, texture:Texture<'r>) -> usize {
-        let index = self.textures.len();
-        self.textures.push(texture);
-        index
+impl TextureLibrary {
+    fn new(texture_creator: sdl2::render::TextureCreator<sdl2::video::WindowContext>) -> Self {
+        TextureLibrary {
+            texture_creator,
+            loaded_textures: Vec::new(),
+        }
     }
 
-    fn make_texture(&mut self, path:&str) {
-        let tex = self.creator.load_texture(path).expect("Invalid Texture Filepath");
-        
+    fn add_texture(&mut self, path:&str) -> usize {
+        let texture_id = self.loaded_textures.len();
+        self.loaded_textures.push(self.texture_creator.load_texture(path).expect("Bad filepath to texture"));
+        texture_id
     }
 
-    fn borrow_texture(&self, index:usize) -> &Texture<'r> {
-        &self.textures[index]
+    pub fn fetch_texture(&self, texture_id:usize) -> &Texture {
+        &self.loaded_textures[texture_id]
     }
 }
-
-
 
 pub struct Engine;
 
@@ -64,8 +60,8 @@ impl Engine {
 
         let mut canvas = window.into_canvas().build().expect("could not make canvas");
 
-        let texture_creator =  TextureManager::new(canvas.texture_creator());
-        //texture_creator.add_texture(texture: Texture<'r>)
+        let mut texture_library = TextureLibrary::new(canvas.texture_creator());
+        let character_texture_id = texture_library.add_texture("assets/character_sheet.png");
 
         canvas.set_draw_color(Color::RGB(0, 255, 255));
         canvas.clear();
@@ -98,7 +94,9 @@ impl Engine {
             .create_entity()
             .with(Position { x: 0.0, y: 0.0 })
             .with(Velocity { x: 0.0, y: 0.0 })
-            .with(Name { name: String::from("Player"),
+            .with(Sprite {texture_id:character_texture_id})
+            .with(Name {
+                name: String::from("Player"),
             })
             .build();
 
@@ -157,7 +155,7 @@ impl Engine {
 
                 // future warning expensive input copy
                 *input_resource = InputResource(input);
-                //                          here ^^^^^
+                //                         here ^^^^^
             }
 
             dispatcher.dispatch(&world);

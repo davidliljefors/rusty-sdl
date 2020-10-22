@@ -2,8 +2,8 @@ use specs::{Component, VecStorage};
 
 #[derive(Debug)]
 pub struct Position {
-    pub x:f32,
-    pub y:f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Component for Position {
@@ -12,10 +12,10 @@ impl Component for Position {
 
 #[derive(Debug)]
 pub struct Controller {
-    pub up:bool,
-    pub down:bool,
-    pub left:bool,
-    pub right:bool,
+    pub up: bool,
+    pub down: bool,
+    pub left: bool,
+    pub right: bool,
 }
 
 impl Component for Controller {
@@ -24,8 +24,8 @@ impl Component for Controller {
 
 #[derive(Debug)]
 pub struct Velocity {
-    pub x:f32,
-    pub y:f32,
+    pub x: f32,
+    pub y: f32,
 }
 
 impl Component for Velocity {
@@ -34,16 +34,15 @@ impl Component for Velocity {
 
 #[derive(Debug)]
 pub struct Name {
-    pub name:String,
+    pub name: String,
 }
 
 impl Component for Name {
     type Storage = VecStorage<Self>;
 }
 
-
 pub struct Sprite {
-    pub texture_id:usize,
+    pub texture_id: usize,
 }
 
 impl Component for Sprite {

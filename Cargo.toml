@@ -11,4 +11,4 @@ specs = "0.16.1"
 [dependencies.sdl2]
 version = "0.34.3"
 default-features = false
-features = ["image"]
+features = ["image", "unsafe_textures"]
