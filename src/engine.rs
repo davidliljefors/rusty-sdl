@@ -28,13 +28,17 @@ impl TextureLibrary {
         }
     }
 
-    fn add_texture(&mut self, path:&str) -> usize {
+    fn add_texture(&mut self, path: &str) -> usize {
         let texture_id = self.loaded_textures.len();
-        self.loaded_textures.push(self.texture_creator.load_texture(path).expect("Bad filepath to texture"));
+        self.loaded_textures.push(
+            self.texture_creator
+                .load_texture(path)
+                .expect("Bad filepath to texture"),
+        );
         texture_id
     }
 
-    pub fn fetch_texture(&self, texture_id:usize) -> &Texture {
+    pub fn fetch_texture(&self, texture_id: usize) -> &Texture {
         &self.loaded_textures[texture_id]
     }
 }
@@ -79,6 +83,7 @@ impl Engine {
                 &["position printer"],
             )
             .with(InputSystem, "input", &[])
+            .with_thread_local(system: T)
             .build();
 
         dispatcher.setup(&mut world);
@@ -94,7 +99,9 @@ impl Engine {
             .create_entity()
             .with(Position { x: 0.0, y: 0.0 })
             .with(Velocity { x: 0.0, y: 0.0 })
-            .with(Sprite {texture_id:character_texture_id})
+            .with(Sprite {
+                texture_id: character_texture_id,
+            })
             .with(Name {
                 name: String::from("Player"),
             })
