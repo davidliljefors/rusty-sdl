@@ -4,10 +4,13 @@ use crate::ecs::components::*;
 pub struct CollisionSystem;
 
 
-fn distance(xa:f32, ya:f32, xb:f32, yb:f32) -> f32
+fn circle_collsion(pos_a:&Position, cir_a:&CircleCollider, pos_b:&Position, cir_b:&CircleCollider) -> bool
 {
-    let distance = (xa*xa + ya*ya) - (xb*xb + yb*yb);
-    distance.sqrt()
+    let dx = pos_a.x - pos_b.x;
+    let dy = pos_a.y - pos_b.y;
+    let r = cir_a.radius + cir_b.radius;
+
+    dx*dx+ dy*dy < r*r
 }
 
 impl<'a> System<'a> for CollisionSystem {
@@ -27,10 +30,9 @@ impl<'a> System<'a> for CollisionSystem {
                 if collider_a.id == collider_b.id {
                     continue
                 }
-                let distance = distance(pos_a.x, pos_a.y, pos_b.x, pos_b.y);
-                let range = collider_a.radius + collider_b.radius;
-                if  distance < range {
-                    println!("Collision between {}, {} with distnace {}", name_a.name, name_b.name, distance);
+                let impact = circle_collsion(pos_a, collider_a, pos_b, collider_b);
+                if  impact {
+                    println!("Collision between {}, {}", name_a.name, name_b.name);
                 }   
             }
         });
