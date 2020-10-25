@@ -10,11 +10,55 @@ use crate::ecs::resources::*;
 use crate::ecs::systems::*;
 use crate::input;
 
-pub struct Engine;
+pub struct Engine {
+    window_width:u32,
+    window_height:u32,
+}
+
+struct FpsRecorder {
+    next_index: usize,
+    values: [f32; 100],
+}
+
+impl FpsRecorder {
+    fn new() -> Self {
+        let arr = [0.0; 100];
+        FpsRecorder{next_index:0, values:arr}
+    } 
+
+    fn record(&mut self, dt: f32) {
+        
+        if self.next_index >= self.values.len() {
+            self.write_result();
+            self.reset();
+        }
+        self.values[self.next_index] = dt;
+        self.next_index += 1;
+    }
+
+    fn write_result(&self) {
+        let mut total: f32 = 0.0;
+
+        for value in self.values.iter() {
+            total += value;
+        }
+
+        total /= self.values.len() as f32;
+
+        println!("Application FPS :{}", 1.0/total);
+    }
+
+    fn reset(&mut self) {
+        for value in self.values.iter_mut() {
+            *value = 0.0;
+        }
+        self.next_index = 0;
+    }
+}
 
 impl Engine {
-    pub fn new() -> Self {
-        Engine {}
+    pub fn new(width:u32, height:u32) -> Self {
+        Engine {window_width:width, window_height:height}
     }
 
     pub fn run(&self) {
@@ -26,7 +70,7 @@ impl Engine {
             image::init(InitFlag::PNG | InitFlag::JPG).expect("could not make image context");
 
         let window = video_subsystem
-            .window("rust-sdl2 demo", 1600, 900)
+            .window("rusty-sdl", self.window_width, self.window_height)
             .position_centered()
             .build()
             .expect("could not make window");
@@ -53,7 +97,6 @@ impl Engine {
         canvas.clear();
         canvas.present();
 
-        
         let mut input = input::Input::new();
 
         let mut dispatcher = DispatcherBuilder::new()
@@ -107,7 +150,7 @@ impl Engine {
             })
             .with(Weapon {
                 speed: 1400.0,
-                time_between_shots: 0.2,
+                time_between_shots: 0.002,
                 cooldown: 0.0,
                 wants_to_fire: false,
             })
@@ -115,7 +158,8 @@ impl Engine {
             .build();
 
         let mut last_frame_time = std::time::Instant::now();
-
+        
+        let mut fps_recorder = FpsRecorder::new();
         let mut event_pump = sdl_context.event_pump().unwrap();
         'running: loop {
             canvas.set_draw_color(Color::RGB(0, 0, 0));
@@ -157,20 +201,20 @@ impl Engine {
             {
                 // Update resource state for elapsed time
                 let elapsed_time = std::time::Instant::now() - last_frame_time;
+                let elapsed_time = elapsed_time.as_secs_f32();
+
+                fps_recorder.record(elapsed_time);
+
                 let mut delta_time = world.write_resource::<DeltaTime>();
-                *delta_time = DeltaTime(elapsed_time.as_secs_f32());
+                *delta_time = DeltaTime(elapsed_time);
 
                 last_frame_time = std::time::Instant::now();
-                println!("DeltaTime {}", elapsed_time.as_secs_f32() );
             }
 
             {
                 // Update resource state for input
                 let mut input_resource = world.write_resource::<InputResource>();
-
-                // future warning expensive input copy
                 *input_resource = InputResource(input);
-                //                         here ^^^^^
             }
 
             dispatcher.dispatch(&world);
@@ -183,8 +227,8 @@ impl Engine {
                 world.system_data(),
             )
             .expect("Render failed");
-
             canvas.present();
-        }
+
+        } // Loop
     }
 }

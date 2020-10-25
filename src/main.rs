@@ -11,7 +11,7 @@ mod ecs {
 
 
 pub fn main() {
-    let engine = engine::Engine::new();
+    let engine = engine::Engine::new(1920, 1080);
 
     engine.run();
 }

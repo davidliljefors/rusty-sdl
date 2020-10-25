@@ -31,14 +31,17 @@ impl<'a> System<'a> for LifetimeKiller {
     fn run(&mut self, data: Self::SystemData) {
         let (entities, mut lifetime, elapsed_time) = data;
         let elapsed_time = elapsed_time.0;
-        for (entity, lifetime) in (&entities, &mut lifetime).join() {
-            lifetime.time_left -= elapsed_time;
-            if lifetime.time_left < 0.0 {
-                entities
-                    .delete(entity)
-                    .expect("error deleting after lifetime ended")
-            }
-        }
+
+        (&entities, &mut lifetime)
+            .par_join()
+            .for_each(|(entity, lifetime)| {
+                lifetime.time_left -= elapsed_time;
+                if lifetime.time_left < 0.0 {
+                    entities
+                        .delete(entity)
+                        .expect("error deleting after lifetime ended")
+                }
+            });
     }
 }
 
@@ -86,8 +89,19 @@ impl<'a> System<'a> for WeaponSystem {
                     },
                 );
                 updater.insert(projectile, Lifetime { time_left: 0.5 });
-                updater.insert(projectile, CircleCollider { radius: 16.0, id:3 });
-                updater.insert(projectile, Name{name:String::from("Projectile")});
+                updater.insert(
+                    projectile,
+                    CircleCollider {
+                        radius: 16.0,
+                        id: 3,
+                    },
+                );
+                updater.insert(
+                    projectile,
+                    Name {
+                        name: String::from("Projectile"),
+                    },
+                );
             }
         };
 
@@ -107,13 +121,17 @@ impl<'a> System<'a> for PositionUpdateSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (delta, vel, mut pos) = data;
+        let (delta, velocities, mut positions) = data;
         let delta = delta.0;
 
-        for (vel, pos) in (&vel, &mut pos).join() {
-            pos.x += vel.x * delta;
-            pos.y += vel.y * delta;
-        }
+        let update_position = |(velocity, position): (& Velocity, &mut Position)| {
+            position.x += velocity.x * delta;
+            position.y += velocity.y * delta;
+        };
+
+        (&velocities, &mut positions)
+        .join()
+        .for_each(update_position);
     }
 }
 
