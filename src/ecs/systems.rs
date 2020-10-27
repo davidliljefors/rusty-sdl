@@ -3,6 +3,8 @@ use specs::prelude::*;
 
 use crate::ecs::components::*;
 use crate::ecs::resources::*;
+use crate::ecs::collision::*;
+
 
 pub struct PositionPrinterSystem;
 
@@ -94,6 +96,7 @@ impl<'a> System<'a> for WeaponSystem {
                     CircleCollider {
                         radius: 16.0,
                         id: 3,
+                        layer: Layers::Bullet | Layers::Enemy
                     },
                 );
                 updater.insert(
@@ -101,6 +104,12 @@ impl<'a> System<'a> for WeaponSystem {
                     Name {
                         name: String::from("Projectile"),
                     },
+                    
+                );
+                updater.insert(
+                    projectile,
+                    CollisionResponse::new()
+                    ,
                 );
             }
         };

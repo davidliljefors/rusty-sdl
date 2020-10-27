@@ -11,54 +11,22 @@ use crate::ecs::systems::*;
 use crate::input;
 
 pub struct Engine {
-    window_width:u32,
-    window_height:u32,
-}
-
-struct FpsRecorder {
-    next_index: usize,
-    values: [f32; 100],
-}
-
-impl FpsRecorder {
-    fn new() -> Self {
-        let arr = [0.0; 100];
-        FpsRecorder{next_index:0, values:arr}
-    } 
-
-    fn record(&mut self, dt: f32) {
-        
-        if self.next_index >= self.values.len() {
-            self.write_result();
-            self.reset();
-        }
-        self.values[self.next_index] = dt;
-        self.next_index += 1;
-    }
-
-    fn write_result(&self) {
-        let mut total: f32 = 0.0;
-
-        for value in self.values.iter() {
-            total += value;
-        }
-
-        total /= self.values.len() as f32;
-
-        println!("Application FPS :{}", 1.0/total);
-    }
-
-    fn reset(&mut self) {
-        for value in self.values.iter_mut() {
-            *value = 0.0;
-        }
-        self.next_index = 0;
-    }
+    window_width: u32,
+    window_height: u32,
+    target_fps: u32,
 }
 
 impl Engine {
-    pub fn new(width:u32, height:u32) -> Self {
-        Engine {window_width:width, window_height:height}
+    pub fn new(width: u32, height: u32) -> Self {
+        Engine {
+            window_width: width,
+            window_height: height,
+            target_fps: 60,
+        }
+    }
+
+    pub fn desired_frame_duration(&self) -> std::time::Duration {
+        std::time::Duration::new(0, 1_000_000_000 / self.target_fps)
     }
 
     pub fn run(&self) {
@@ -106,6 +74,7 @@ impl Engine {
             .with(PositionPrinterSystem, "pos printer", &[])
             .with(WeaponSystem, "weapon system", &["input"])
             .with(LifetimeKiller, "lifetime", &[])
+            .with(ResponseSystem::default(), "collision response", &["collision"])
             .build();
 
         let mut world = World::new();
@@ -125,7 +94,9 @@ impl Engine {
             .with(CircleCollider {
                 radius: 32.0,
                 id: 1,
+                layer:LayerMask::from_enum(Layers::Enemy),
             })
+            .with(CollisionResponse::new())
             .with(Name {
                 name: String::from("Enemy"),
             })
@@ -144,13 +115,15 @@ impl Engine {
             .with(CircleCollider {
                 radius: 32.0,
                 id: 2,
+                layer:LayerMask::from_enum(Layers::Player),
             })
+            .with(CollisionResponse::new())
             .with(Name {
                 name: String::from("Player"),
             })
             .with(Weapon {
                 speed: 1400.0,
-                time_between_shots: 0.002,
+                time_between_shots: 0.2,
                 cooldown: 0.0,
                 wants_to_fire: false,
             })
@@ -158,10 +131,11 @@ impl Engine {
             .build();
 
         let mut last_frame_time = std::time::Instant::now();
-        
-        let mut fps_recorder = FpsRecorder::new();
+
         let mut event_pump = sdl_context.event_pump().unwrap();
         'running: loop {
+            let start_time = std::time::Instant::now();
+
             canvas.set_draw_color(Color::RGB(0, 0, 0));
             canvas.clear();
 
@@ -202,9 +176,6 @@ impl Engine {
                 // Update resource state for elapsed time
                 let elapsed_time = std::time::Instant::now() - last_frame_time;
                 let elapsed_time = elapsed_time.as_secs_f32();
-
-                fps_recorder.record(elapsed_time);
-
                 let mut delta_time = world.write_resource::<DeltaTime>();
                 *delta_time = DeltaTime(elapsed_time);
 
@@ -227,8 +198,19 @@ impl Engine {
                 world.system_data(),
             )
             .expect("Render failed");
-            canvas.present();
 
+            let loop_duration = std::time::Instant::now() - start_time;
+            let desired_duration = self.desired_frame_duration();
+
+            if loop_duration > desired_duration {
+                println!("Stuttering!!");
+            } else {
+                let wait_time = desired_duration - loop_duration;
+                
+                std::thread::sleep(wait_time);
+            }
+
+            canvas.present();
         } // Loop
     }
 }

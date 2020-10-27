@@ -32,11 +32,7 @@ impl Component for Weapon {
     type Storage = HashMapStorage<Self>;
 }
 
-#[derive(Component, Debug)]
-pub struct CircleCollider {
-    pub radius:f32,
-    pub id:u32,
-}
+
 
 #[derive(Component, Debug)]
 pub struct Controller {
