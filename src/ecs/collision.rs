@@ -82,12 +82,12 @@ impl LayerMask {
 }
 
 pub struct CollisionResponse {
-    other: specs::world::Index,
+    other: Option<specs::world::Entity>,
 }
 
 impl CollisionResponse {
     pub fn new() -> CollisionResponse {
-        CollisionResponse { other: 0 }
+        CollisionResponse { other: None }
     }
 }
 
@@ -103,11 +103,14 @@ pub struct ResponseSystem {
 
 impl<'a> System<'a> for ResponseSystem {
     type SystemData = (
+        Entities<'a>,
         ReadStorage<'a, CollisionResponse>,
-        WriteStorage<'a, Position>,
+        ReadStorage<'a, Damage>,
+        ReadStorage<'a, Projectile>,
+        WriteStorage<'a, Health>,
     );
 
-    fn run(&mut self, (responses, mut positions): Self::SystemData) {
+    fn run(&mut self, (entities, responses, damages, projectiles, mut healths): Self::SystemData) {
         self.dirty.clear();
 
         let events = responses.channel().read(self.reader_id.as_mut().unwrap());
@@ -118,8 +121,18 @@ impl<'a> System<'a> for ResponseSystem {
             }
         }
 
-        for (response, position, _) in (&responses, &mut positions, &self.dirty).join() {
-            println!("Detected collision");
+        for (response, damage, _) in (&responses, &damages, &self.dirty).join() {
+            if let Some(target) = response.other {
+                let target_health = healths.get_mut(target);
+                if let Some(target_health) = target_health {
+                    target_health.apply_damage(damage);
+                }
+            }
+        }
+
+        for (entity, _, _) in (&entities, &projectiles, &self.dirty).join() {
+            entities.delete(entity)
+            .expect("error deleting projectile")
         }
     }
 
@@ -153,10 +166,7 @@ impl<'a> System<'a> for CollisionSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, 
-            postions, 
-            colliders, 
-            mut responses) = data;
+        let (entities, postions, colliders, mut responses) = data;
 
         (
             &entities,
@@ -176,7 +186,7 @@ impl<'a> System<'a> for CollisionSystem {
                         if impact {
                             {
                                 let ra = response_a.get_mut_unchecked();
-                                ra.other = entity_b.id();
+                                ra.other = Some(entity_b);
                             }
                         }
                     }

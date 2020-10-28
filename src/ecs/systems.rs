@@ -21,6 +21,28 @@ impl<'a> System<'a> for PositionPrinterSystem {
     }
 }
 
+pub struct HealthSystem;
+
+impl<'a> System<'a> for HealthSystem {
+    type SystemData = (
+        Entities<'a>,
+        ReadStorage<'a, Health>,
+        Read<'a, LazyUpdate>,
+    );
+
+    fn run(&mut self, data: Self::SystemData) {
+        
+        let entities = data.0;
+        let health_storage = data.1;
+
+        for (entity, health) in (&entities, &health_storage).join() {
+            if health.health == 0 {
+                entities.delete(entity).expect("error deleeting entity")
+            }
+        }
+    }
+}
+
 pub struct LifetimeKiller;
 
 impl<'a> System<'a> for LifetimeKiller {
@@ -67,7 +89,11 @@ impl<'a> System<'a> for WeaponSystem {
             if weapon.wants_to_fire && weapon.cooldown <= 0.0 {
                 let projectile = entities.create();
                 weapon.cooldown = weapon.time_between_shots;
-
+                
+                updater.insert(
+                    projectile,
+                    Projectile{}       
+                );
                 updater.insert(
                     projectile,
                     Position {
@@ -109,7 +135,10 @@ impl<'a> System<'a> for WeaponSystem {
                 updater.insert(
                     projectile,
                     CollisionResponse::new()
-                    ,
+                );
+                updater.insert(
+                    projectile,
+                    Damage{damage:10}       
                 );
             }
         };

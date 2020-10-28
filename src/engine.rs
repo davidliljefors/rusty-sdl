@@ -75,6 +75,7 @@ impl Engine {
             .with(WeaponSystem, "weapon system", &["input"])
             .with(LifetimeKiller, "lifetime", &[])
             .with(ResponseSystem::default(), "collision response", &["collision"])
+            .with(HealthSystem, "health", &["collision response"])
             .build();
 
         let mut world = World::new();
@@ -100,6 +101,8 @@ impl Engine {
             .with(Name {
                 name: String::from("Enemy"),
             })
+            .with(Health::new(100))
+            .with(Damage{damage:10})
             .build();
 
         // Create player
@@ -126,7 +129,9 @@ impl Engine {
                 time_between_shots: 0.2,
                 cooldown: 0.0,
                 wants_to_fire: false,
+                damage: 5,
             })
+            .with(Health::new(100))
             .with(KeyboardControlled {})
             .build();
 
@@ -206,7 +211,6 @@ impl Engine {
                 println!("Stuttering!!");
             } else {
                 let wait_time = desired_duration - loop_duration;
-                
                 std::thread::sleep(wait_time);
             }
 
