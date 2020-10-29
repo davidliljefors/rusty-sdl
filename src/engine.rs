@@ -2,7 +2,9 @@ use sdl2::event::Event;
 use sdl2::image::{self, InitFlag, LoadTexture};
 use sdl2::pixels::Color;
 use specs::prelude::*;
+use rand::Rng;
 
+use crate::ecs::animation::*;
 use crate::ecs::collision::*;
 use crate::ecs::components::*;
 use crate::ecs::renderer;
@@ -56,10 +58,14 @@ impl Engine {
             texture_creator
                 .load_texture("assets/bullet.png")
                 .expect("could not load texture"),
+            texture_creator
+                .load_texture("assets/explo.png")
+                .expect("could not load texture"),
         ];
         let player_sprite_id: usize = 0;
         let enemy_sprite_id: usize = 1;
         let _bullet_sprite_id: usize = 2;
+        let explosion_sprite_id: usize = 3;
 
         canvas.set_draw_color(Color::RGB(0, 255, 255));
         canvas.clear();
@@ -74,8 +80,13 @@ impl Engine {
             .with(PositionPrinterSystem, "pos printer", &[])
             .with(WeaponSystem, "weapon system", &["input"])
             .with(LifetimeKiller, "lifetime", &[])
-            .with(ResponseSystem::default(), "collision response", &["collision"])
+            .with(
+                ResponseSystem::default(),
+                "collision response",
+                &["collision"],
+            )
             .with(HealthSystem, "health", &["collision response"])
+            .with(AnimationSystem, "animation", &[])
             .build();
 
         let mut world = World::new();
@@ -84,6 +95,7 @@ impl Engine {
         dispatcher.setup(&mut world);
         renderer::SystemData::setup(&mut world);
 
+        // Create enemy
         world
             .create_entity()
             .with(Position { x: 800.0, y: 300.0 })
@@ -94,17 +106,15 @@ impl Engine {
             })
             .with(CircleCollider {
                 radius: 32.0,
-                id: 1,
-                layer:LayerMask::from_enum(Layers::Enemy),
+                layer: LayerMask::from_enum(Layers::Enemy),
             })
             .with(CollisionResponse::new())
             .with(Name {
                 name: String::from("Enemy"),
             })
             .with(Health::new(100))
-            .with(Damage{damage:10})
+            .with(Damage { damage: 10 })
             .build();
-
         // Create player
         world
             .create_entity()
@@ -117,8 +127,7 @@ impl Engine {
             .with(Velocity { x: 0.0, y: 0.0 })
             .with(CircleCollider {
                 radius: 32.0,
-                id: 2,
-                layer:LayerMask::from_enum(Layers::Player),
+                layer: LayerMask::from_enum(Layers::Player),
             })
             .with(CollisionResponse::new())
             .with(Name {
@@ -203,7 +212,7 @@ impl Engine {
                 world.system_data(),
             )
             .expect("Render failed");
-
+            
             let loop_duration = std::time::Instant::now() - start_time;
             let desired_duration = self.desired_frame_duration();
 
@@ -212,6 +221,9 @@ impl Engine {
             } else {
                 let wait_time = desired_duration - loop_duration;
                 std::thread::sleep(wait_time);
+            }
+            if input.get_key(sdl2::keyboard::Scancode::F12).held {
+                println!("Momentary FPS {}", 1.0 / loop_duration.as_secs_f32())
             }
 
             canvas.present();

@@ -2,11 +2,11 @@ use specs::prelude::*;
 use specs_derive::Component;
 
 use crate::ecs::components::*;
+use crate::ecs::animation::*;
 
 #[derive(Component, Debug)]
 pub struct CircleCollider {
     pub radius: f32,
-    pub id: u32,
     pub layer: LayerMask,
 }
 
@@ -36,31 +36,11 @@ impl LayerMask {
     pub fn new(bitmask: usize) -> Self {
         LayerMask { bitmask }
     }
+
     #[allow(dead_code)]
     pub fn from_enum(tag: Layers) -> Self {
         LayerMask {
             bitmask: tag as usize,
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn from_enum_2(tag1: Layers, tag2: Layers) -> Self {
-        LayerMask {
-            bitmask: (tag1 as usize | tag2 as usize),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn from_enum_3(tag1: Layers, tag2: Layers, tag3: Layers) -> Self {
-        LayerMask {
-            bitmask: (tag1 as usize | tag2 as usize | tag3 as usize),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn from_enum_4(tag1: Layers, tag2: Layers, tag3: Layers, tag4: Layers) -> Self {
-        LayerMask {
-            bitmask: (tag1 as usize | tag2 as usize | tag3 as usize | tag4 as usize),
         }
     }
 
@@ -104,16 +84,21 @@ pub struct ResponseSystem {
 impl<'a> System<'a> for ResponseSystem {
     type SystemData = (
         Entities<'a>,
+        ReadStorage<'a, Position>,
         ReadStorage<'a, CollisionResponse>,
         ReadStorage<'a, Damage>,
         ReadStorage<'a, Projectile>,
         WriteStorage<'a, Health>,
+        Read<'a, LazyUpdate>
     );
 
-    fn run(&mut self, (entities, responses, damages, projectiles, mut healths): Self::SystemData) {
+    fn run(
+        &mut self,
+        (entities, position_storage, response_storage, damage_storage, projectile_storage, mut health_storage, world): Self::SystemData,
+    ) {
         self.dirty.clear();
 
-        let events = responses.channel().read(self.reader_id.as_mut().unwrap());
+        let events = response_storage.channel().read(self.reader_id.as_mut().unwrap());
 
         for event in events {
             if let ComponentEvent::Modified(id) = event {
@@ -121,18 +106,45 @@ impl<'a> System<'a> for ResponseSystem {
             }
         }
 
-        for (response, damage, _) in (&responses, &damages, &self.dirty).join() {
+        for (response, damage, _) in (&response_storage, &damage_storage, &self.dirty).join() {
             if let Some(target) = response.other {
-                let target_health = healths.get_mut(target);
+                let target_health = health_storage.get_mut(target);
                 if let Some(target_health) = target_health {
                     target_health.apply_damage(damage);
                 }
             }
         }
 
-        for (entity, _, _) in (&entities, &projectiles, &self.dirty).join() {
-            entities.delete(entity)
-            .expect("error deleting projectile")
+        for (entity, position, _, _) in
+            (&entities, &position_storage, &projectile_storage, &self.dirty).join()
+        {
+            let explosion = entities.create();
+
+            world.insert(
+                explosion,
+                Position {
+                    x: position.x,
+                    y: position.y,
+                }
+            );
+            world.insert(
+                explosion,
+                Sprite {
+                    spritesheet: 3,
+                    size: sdl2::rect::Point::new(32, 32),
+                    src_rect: sdl2::rect::Rect::new(0, 0, 64, 64),
+                }
+            );
+            world.insert(
+                explosion,
+                Animation::new(30, 4, 4)
+            );
+            world.insert(
+                explosion,
+                Lifetime {time_left:0.50}
+            );
+
+            entities.delete(entity).expect("Error delete projectile on collision");
         }
     }
 
@@ -167,7 +179,6 @@ impl<'a> System<'a> for CollisionSystem {
 
     fn run(&mut self, data: Self::SystemData) {
         let (entities, postions, colliders, mut responses) = data;
-
         (
             &entities,
             &postions,
@@ -184,10 +195,8 @@ impl<'a> System<'a> for CollisionSystem {
                     if collider_a.layer.any(&collider_b.layer) {
                         let impact = circle_collsion(pos_a, collider_a, pos_b, collider_b);
                         if impact {
-                            {
-                                let ra = response_a.get_mut_unchecked();
-                                ra.other = Some(entity_b);
-                            }
+                            let ra = response_a.get_mut_unchecked();
+                            ra.other = Some(entity_b);
                         }
                     }
                 }

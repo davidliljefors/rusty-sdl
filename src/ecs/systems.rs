@@ -53,19 +53,17 @@ impl<'a> System<'a> for LifetimeKiller {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut lifetime, elapsed_time) = data;
-        let elapsed_time = elapsed_time.0;
+        let (entities, mut lifetime_storage, delta_time) = data;
+        let delta_time = delta_time.0;
 
-        (&entities, &mut lifetime)
-            .par_join()
-            .for_each(|(entity, lifetime)| {
-                lifetime.time_left -= elapsed_time;
-                if lifetime.time_left < 0.0 {
-                    entities
-                        .delete(entity)
-                        .expect("error deleting after lifetime ended")
-                }
-            });
+        for (entity, mut lifetime) in (&entities, &mut lifetime_storage).join() {
+            lifetime.time_left -= delta_time;
+            if lifetime.time_left < 0.0 {
+                entities
+                    .delete(entity)
+                    .expect("error deleting after lifetime ended")
+            }
+        }
     }
 }
 
@@ -80,7 +78,7 @@ impl<'a> System<'a> for WeaponSystem {
         Read<'a, LazyUpdate>,
     );
 
-    fn run(&mut self, (entities, delta, position, mut weapon, updater): Self::SystemData) {
+    fn run(&mut self, (entities, delta, position, mut weapon, world): Self::SystemData) {
         let delta = delta.0;
 
         let handle_weapon = |(_entity, position, weapon): (Entity, &Position, &mut Weapon)| {
@@ -90,18 +88,18 @@ impl<'a> System<'a> for WeaponSystem {
                 let projectile = entities.create();
                 weapon.cooldown = weapon.time_between_shots;
                 
-                updater.insert(
+                world.insert(
                     projectile,
                     Projectile{}       
                 );
-                updater.insert(
+                world.insert(
                     projectile,
                     Position {
                         x: position.x,
                         y: position.y,
                     },
                 );
-                updater.insert(
+                world.insert(
                     projectile,
                     Sprite {
                         spritesheet: 2,
@@ -109,34 +107,33 @@ impl<'a> System<'a> for WeaponSystem {
                         src_rect: sdl2::rect::Rect::new(0, 0, 16, 16),
                     },
                 );
-                updater.insert(
+                world.insert(
                     projectile,
                     Velocity {
                         x: 0.0,
                         y: -weapon.speed as f32,
                     },
                 );
-                updater.insert(projectile, Lifetime { time_left: 0.5 });
-                updater.insert(
+                world.insert(projectile, Lifetime { time_left: 0.5 });
+                world.insert(
                     projectile,
                     CircleCollider {
                         radius: 16.0,
-                        id: 3,
                         layer: Layers::Bullet | Layers::Enemy
                     },
                 );
-                updater.insert(
+                world.insert(
                     projectile,
                     Name {
                         name: String::from("Projectile"),
                     },
                     
                 );
-                updater.insert(
+                world.insert(
                     projectile,
                     CollisionResponse::new()
                 );
-                updater.insert(
+                world.insert(
                     projectile,
                     Damage{damage:10}       
                 );
@@ -159,15 +156,14 @@ impl<'a> System<'a> for PositionUpdateSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (delta, velocities, mut positions) = data;
+        let (delta, velocity_storage, mut position_storage) = data;
         let delta = delta.0;
 
         let update_position = |(velocity, position): (& Velocity, &mut Position)| {
             position.x += velocity.x * delta;
             position.y += velocity.y * delta;
         };
-
-        (&velocities, &mut positions)
+        (&velocity_storage, &mut position_storage)
         .join()
         .for_each(update_position);
     }
@@ -184,40 +180,40 @@ impl<'a> System<'a> for InputSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (input, controlled, mut velocity, mut weapon) = data;
+        let (input, controlled, mut velocity_storage, mut weapon_storage) = data;
         let input = &input.0;
 
-        for (velocity, _) in (&mut velocity, &controlled).join() {
+        for (velocity, _) in (&mut velocity_storage, &controlled).join() {
             velocity.y = 0.0;
             velocity.x = 0.0;
         }
 
         if input.get_key(Scancode::Up).held {
-            for (velocity, _) in (&mut velocity, &controlled).join() {
+            for (velocity, _) in (&mut velocity_storage, &controlled).join() {
                 velocity.y = -400.0;
             }
         }
 
         if input.get_key(Scancode::Down).held {
-            for (velocity, _) in (&mut velocity, &controlled).join() {
+            for (velocity, _) in (&mut velocity_storage, &controlled).join() {
                 velocity.y = 400.0;
             }
         }
 
         if input.get_key(Scancode::Left).held {
-            for (velocity, _) in (&mut velocity, &controlled).join() {
+            for (velocity, _) in (&mut velocity_storage, &controlled).join() {
                 velocity.x = -400.0;
             }
         }
 
         if input.get_key(Scancode::Right).held {
-            for (velocity, _) in (&mut velocity, &controlled).join() {
+            for (velocity, _) in (&mut velocity_storage, &controlled).join() {
                 velocity.x = 400.0;
             }
         }
 
         let should_fire = input.get_key(Scancode::Space).held;
-        for (weapon, _) in (&mut weapon, &controlled).join() {
+        for (weapon, _) in (&mut weapon_storage, &controlled).join() {
             weapon.wants_to_fire = should_fire;
         }
     }

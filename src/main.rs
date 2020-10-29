@@ -7,6 +7,7 @@ mod ecs {
     pub mod systems;
     pub mod renderer;
     pub mod collision;
+    pub mod animation;
 }
 
 

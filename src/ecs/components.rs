@@ -10,6 +10,8 @@ pub struct Position {
 #[derive(Component, Debug)]
 pub struct Projectile;
 
+
+
 #[derive(Component, Debug)]
 pub struct Lifetime {
     pub time_left: f32,
@@ -65,13 +67,13 @@ impl Component for Weapon {
     type Storage = HashMapStorage<Self>;
 }
 
-#[derive(Component, Debug)]
-pub struct Controller {
-    pub up: bool,
-    pub down: bool,
-    pub left: bool,
-    pub right: bool,
-}
+// #[derive(Component, Debug)]
+// pub struct Controller {
+//     pub up: bool,
+//     pub down: bool,
+//     pub left: bool,
+//     pub right: bool,
+// }
 
 #[derive(Component, Debug)]
 pub struct Velocity {
@@ -91,5 +93,6 @@ pub struct Sprite {
     pub spritesheet: usize,
     /// The current region of the spritesheet to be rendered
     pub src_rect: sdl2::rect::Rect,
+    /// Size in pixels on screen
     pub size: sdl2::rect::Point,
 }

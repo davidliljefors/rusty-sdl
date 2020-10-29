@@ -6,10 +6,16 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
-specs = "0.16.1"
-specs-derive = "0.4.*"
+specs-derive = "0.4.1"
+rand = "*"
+
+[dependencies.specs]
+version = "0.16.1"
+default-features = false
+features = ["parallel"]
 
 [dependencies.sdl2]
 version = "0.34.3"
 default-features = false
 features = ["image"]
+
