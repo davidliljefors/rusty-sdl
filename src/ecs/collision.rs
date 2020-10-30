@@ -1,7 +1,7 @@
 use specs::prelude::*;
 use specs_derive::Component;
 
-use crate::ecs::components::*;
+use crate::{vec2::Vec2, ecs::components::*};
 use crate::ecs::animation::*;
 
 #[derive(Component, Debug)]
@@ -122,10 +122,7 @@ impl<'a> System<'a> for ResponseSystem {
 
             world.insert(
                 explosion,
-                Position {
-                    x: position.x,
-                    y: position.y,
-                }
+                Position{position:Vec2::randomize(position.position, 10.0)}
             );
             world.insert(
                 explosion,
@@ -160,11 +157,9 @@ fn circle_collsion(
     pos_b: &Position,
     cir_b: &CircleCollider,
 ) -> bool {
-    let dx = pos_a.x - pos_b.x;
-    let dy = pos_a.y - pos_b.y;
-    let r = cir_a.radius + cir_b.radius;
-
-    (dx * dx) + (dy * dy) < (r * r)
+    let distance = Vec2::distance(pos_a.position, pos_b.position);
+    
+    distance < cir_a.radius + cir_b.radius
 }
 
 pub struct CollisionSystem;

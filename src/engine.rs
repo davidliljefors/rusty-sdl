@@ -2,7 +2,6 @@ use sdl2::event::Event;
 use sdl2::image::{self, InitFlag, LoadTexture};
 use sdl2::pixels::Color;
 use specs::prelude::*;
-use rand::Rng;
 
 use crate::ecs::animation::*;
 use crate::ecs::collision::*;
@@ -62,10 +61,10 @@ impl Engine {
                 .load_texture("assets/explo.png")
                 .expect("could not load texture"),
         ];
-        let player_sprite_id: usize = 0;
-        let enemy_sprite_id: usize = 1;
+        let _player_sprite_id: usize = 0;
+        let _enemy_sprite_id: usize = 1;
         let _bullet_sprite_id: usize = 2;
-        let explosion_sprite_id: usize = 3;
+        let _explosion_sprite_id: usize = 3;
 
         canvas.set_draw_color(Color::RGB(0, 255, 255));
         canvas.clear();
@@ -98,7 +97,7 @@ impl Engine {
         // Create enemy
         world
             .create_entity()
-            .with(Position { x: 800.0, y: 300.0 })
+            .with(Position::new(800.0, 300.0))
             .with(Sprite {
                 spritesheet: enemy_sprite_id,
                 size: sdl2::rect::Point::new(128, 128),
@@ -118,13 +117,13 @@ impl Engine {
         // Create player
         world
             .create_entity()
-            .with(Position { x: 0.0, y: 0.0 })
+            .with(Position::new( 0.0, 0.0 ))
             .with(Sprite {
                 spritesheet: player_sprite_id,
                 size: sdl2::rect::Point::new(128, 128),
                 src_rect: sdl2::rect::Rect::new(0, 0, 128, 128),
             })
-            .with(Velocity { x: 0.0, y: 0.0 })
+            .with(Velocity::default())
             .with(CircleCollider {
                 radius: 32.0,
                 layer: LayerMask::from_enum(Layers::Player),

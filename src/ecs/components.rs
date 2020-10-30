@@ -1,16 +1,29 @@
 use specs::prelude::*;
 use specs_derive::Component;
+use crate::vec2::Vec2;
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Copy, Clone)]
 pub struct Position {
-    pub x: f32,
-    pub y: f32,
+    pub position:Vec2,
 }
+
+impl Position {
+    pub fn new(x:f32, y:f32) -> Self {
+        Self {position:Vec2{x, y}}
+    }
+     
+    pub fn x(&self) -> f32 {
+        self.position.x
+    }
+    
+    pub fn y(&self) -> f32 {
+        self.position.y
+    }
+}
+
 
 #[derive(Component, Debug)]
 pub struct Projectile;
-
-
 
 #[derive(Component, Debug)]
 pub struct Lifetime {
@@ -67,18 +80,31 @@ impl Component for Weapon {
     type Storage = HashMapStorage<Self>;
 }
 
-// #[derive(Component, Debug)]
-// pub struct Controller {
-//     pub up: bool,
-//     pub down: bool,
-//     pub left: bool,
-//     pub right: bool,
-// }
-
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Default, Clone, Copy)]
 pub struct Velocity {
-    pub x: f32,
-    pub y: f32,
+    pub velocity:Vec2,
+}
+
+impl Velocity {
+    pub fn new(x:f32, y:f32) -> Self {
+        Velocity{ velocity:Vec2{ x,y } }
+    }
+
+    pub fn x(&self) -> f32 {
+        self.velocity.x
+    }
+
+    pub fn y(&self) -> f32 {
+        self.velocity.y
+    }
+
+    pub fn set_x(&mut self, value:f32) {
+        self.velocity.x = value;
+    }
+
+    pub fn set_y(&mut self, value:f32) {
+        self.velocity.y = value;
+    }
 }
 
 #[derive(Component, Debug)]

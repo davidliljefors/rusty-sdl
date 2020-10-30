@@ -94,10 +94,7 @@ impl<'a> System<'a> for WeaponSystem {
                 );
                 world.insert(
                     projectile,
-                    Position {
-                        x: position.x,
-                        y: position.y,
-                    },
+                    position.clone(),
                 );
                 world.insert(
                     projectile,
@@ -109,10 +106,7 @@ impl<'a> System<'a> for WeaponSystem {
                 );
                 world.insert(
                     projectile,
-                    Velocity {
-                        x: 0.0,
-                        y: -weapon.speed as f32,
-                    },
+                    Velocity::new(0.0, -weapon.speed as f32),
                 );
                 world.insert(projectile, Lifetime { time_left: 0.5 });
                 world.insert(
@@ -160,8 +154,7 @@ impl<'a> System<'a> for PositionUpdateSystem {
         let delta = delta.0;
 
         let update_position = |(velocity, position): (& Velocity, &mut Position)| {
-            position.x += velocity.x * delta;
-            position.y += velocity.y * delta;
+            position.position += velocity.velocity * delta;
         };
         (&velocity_storage, &mut position_storage)
         .join()
@@ -184,31 +177,31 @@ impl<'a> System<'a> for InputSystem {
         let input = &input.0;
 
         for (velocity, _) in (&mut velocity_storage, &controlled).join() {
-            velocity.y = 0.0;
-            velocity.x = 0.0;
+            velocity.set_y(0.0);
+            velocity.set_x(0.0);
         }
 
         if input.get_key(Scancode::Up).held {
             for (velocity, _) in (&mut velocity_storage, &controlled).join() {
-                velocity.y = -400.0;
+                velocity.set_y(-400.0);
             }
         }
 
         if input.get_key(Scancode::Down).held {
             for (velocity, _) in (&mut velocity_storage, &controlled).join() {
-                velocity.y = 400.0;
+                velocity.set_y(400.0);
             }
         }
 
         if input.get_key(Scancode::Left).held {
             for (velocity, _) in (&mut velocity_storage, &controlled).join() {
-                velocity.x = -400.0;
+                velocity.set_x(-400.0);
             }
         }
 
         if input.get_key(Scancode::Right).held {
             for (velocity, _) in (&mut velocity_storage, &controlled).join() {
-                velocity.x = 400.0;
+                velocity.set_x(400.0);
             }
         }
 

@@ -1,6 +1,7 @@
 
 mod engine;
 mod input;
+mod vec2;
 mod ecs {
     pub mod components;
     pub mod resources;

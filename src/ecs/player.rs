@@ -14,12 +14,14 @@ impl Component for PlayerComponent {
 }
 
 
-struct PlayerSystem {
-
-}
+struct PlayerSystem;
 
 impl System<'a> for PlayerSystem {
-    type SystemData = (ReadStorage<'a, Position>, ReadStorage<'a, Name>);
+    type SystemData = 
+    (
+        ReadStorage<'a, Position>, 
+        ReadStorage<'a, Name>
+    );
 
     #[allow(unused_variables)]
     fn run(&mut self, data: Self::SystemData) {
