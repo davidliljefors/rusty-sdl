@@ -3,42 +3,30 @@ use specs::prelude::*;
 
 use crate::ecs::components::*;
 use crate::ecs::resources::*;
-use crate::ecs::collision::*;
-
-
-pub struct PositionPrinterSystem;
-
-impl<'a> System<'a> for PositionPrinterSystem {
-    type SystemData = (ReadStorage<'a, Position>, ReadStorage<'a, Name>);
-
-    #[allow(unused_variables)]
-    fn run(&mut self, data: Self::SystemData) {
-        //let (pos, name) = data;
-
-        // for (pos, name) in (&pos, &name).join() {
-        //     println!("{:?} is at {:?}", &name.name, &pos);
-        // }
-    }
-}
+use crate::ecs::weapon::*;
 
 pub struct HealthSystem;
 
 impl<'a> System<'a> for HealthSystem {
-    type SystemData = (
-        Entities<'a>,
-        ReadStorage<'a, Health>,
-        Read<'a, LazyUpdate>,
-    );
+    type SystemData = (Entities<'a>, WriteStorage<'a, Health>, Read<'a, LazyUpdate>);
 
     fn run(&mut self, data: Self::SystemData) {
-        
-        let entities = data.0;
-        let health_storage = data.1;
+        let (entities, mut health_storage, world) = data;
 
-        for (entity, health) in (&entities, &health_storage).join() {
-            if health.health == 0 {
-                entities.delete(entity).expect("error deleeting entity")
+        for (entity, health) in (&entities, &mut health_storage).join() {
+            for damage_event in health.damage_events.iter() {
+                let DamageEvent::DamageTaken(amount, pos) = damage_event;
+
+                if amount >= &health.health {
+                    health.health = 0;
+                    (health.on_death)(*pos, &entities, &world);
+                    entities.delete(entity).expect("error deleeting entity")
+                // enemy died!
+                } else {
+                    health.health -= amount;
+                }
             }
+            health.damage_events.clear();
         }
     }
 }
@@ -67,79 +55,6 @@ impl<'a> System<'a> for LifetimeKiller {
     }
 }
 
-pub struct WeaponSystem;
-
-impl<'a> System<'a> for WeaponSystem {
-    type SystemData = (
-        Entities<'a>,
-        Read<'a, DeltaTime>,
-        ReadStorage<'a, Position>,
-        WriteStorage<'a, Weapon>,
-        Read<'a, LazyUpdate>,
-    );
-
-    fn run(&mut self, (entities, delta, position, mut weapon, world): Self::SystemData) {
-        let delta = delta.0;
-
-        let handle_weapon = |(_entity, position, weapon): (Entity, &Position, &mut Weapon)| {
-            weapon.cooldown -= delta;
-
-            if weapon.wants_to_fire && weapon.cooldown <= 0.0 {
-                let projectile = entities.create();
-                weapon.cooldown = weapon.time_between_shots;
-                
-                world.insert(
-                    projectile,
-                    Projectile{}       
-                );
-                world.insert(
-                    projectile,
-                    position.clone(),
-                );
-                world.insert(
-                    projectile,
-                    Sprite {
-                        spritesheet: 2,
-                        size: sdl2::rect::Point::new(32, 32),
-                        src_rect: sdl2::rect::Rect::new(0, 0, 16, 16),
-                    },
-                );
-                world.insert(
-                    projectile,
-                    Velocity::new(0.0, -weapon.speed as f32),
-                );
-                world.insert(projectile, Lifetime { time_left: 0.5 });
-                world.insert(
-                    projectile,
-                    CircleCollider {
-                        radius: 16.0,
-                        layer: Layers::Bullet | Layers::Enemy
-                    },
-                );
-                world.insert(
-                    projectile,
-                    Name {
-                        name: String::from("Projectile"),
-                    },
-                    
-                );
-                world.insert(
-                    projectile,
-                    CollisionResponse::new()
-                );
-                world.insert(
-                    projectile,
-                    Damage{damage:10}       
-                );
-            }
-        };
-
-        (&entities, &position, &mut weapon)
-            .join()
-            .for_each(handle_weapon);
-    }
-}
-
 pub struct PositionUpdateSystem;
 
 impl<'a> System<'a> for PositionUpdateSystem {
@@ -150,15 +65,15 @@ impl<'a> System<'a> for PositionUpdateSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (delta, velocity_storage, mut position_storage) = data;
-        let delta = delta.0;
+        let (delta_time, velocity_storage, mut position_storage) = data;
+        let delta_time = delta_time.0;
 
-        let update_position = |(velocity, position): (& Velocity, &mut Position)| {
-            position.position += velocity.velocity * delta;
+        let update_position = |(velocity, position): (&Velocity, &mut Position)| {
+            position.position += velocity.velocity * delta_time;
         };
         (&velocity_storage, &mut position_storage)
-        .join()
-        .for_each(update_position);
+            .join()
+            .for_each(update_position);
     }
 }
 
@@ -206,8 +121,15 @@ impl<'a> System<'a> for InputSystem {
         }
 
         let should_fire = input.get_key(Scancode::Space).held;
-        for (weapon, _) in (&mut weapon_storage, &controlled).join() {
-            weapon.wants_to_fire = should_fire;
+
+        if should_fire {
+            for (weapon, _) in (&mut weapon_storage, &controlled).join() {
+                weapon.command = WeaponFireCommand::FireOnce;
+            }
+        } else {
+            for (weapon, _) in (&mut weapon_storage, &controlled).join() {
+                weapon.command = WeaponFireCommand::Waiting;
+            }
         }
     }
 }
